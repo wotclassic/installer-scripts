@@ -1,0 +1,1 @@
+IMPORTANT: The game does not support English officially, but this pack provides a third-party mod (patched for compatibility with our mods) that attempts to restore English localization. It is imperfect, so if you encounter any untranslated text, grammar mistakes or otherwise wrong translation, please report to our Discord server to help us improve your experience.

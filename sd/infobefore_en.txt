@@ -1,0 +1,1 @@
+BEFORE YOU INSTALL: You must install the main modpack FIRST or NOT INSTALL IT AT ALL if you want to use this addon. Not following this rule will result in the SD-model files being removed from the game by the main pack, since it cleans the mods folder before installation.

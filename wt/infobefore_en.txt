@@ -1,0 +1,3 @@
+ATTENTION: you must install the main pack from the official website BEFORE installing this addon. It will NOT work otherwise.
+
+This addon pack does NOT support English, and therefore you are going to see untranslated strings in Russian or unchanged from the original.
