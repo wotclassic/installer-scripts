@@ -1,7 +1,7 @@
 #define GameMajorVer "38"
 #define GameMiddleVer "0"
 #define GameMinorVer "0"
-#define BuildNumber "8"
+#define BuildNumber "9"
 
 #define GameVer "1."+GameMajorVer+"."+GameMiddleVer+"."+GameMinorVer
 #define MyAppName "SD-модели «Мир Танков Истоки»"
@@ -120,18 +120,18 @@ ru.China=SD-модели Китая (тизер)
 en.China=Chinese SD-models (preview)
 
 ru.RunGame=Запустить игру
-en.RunGame=Run «Mir Tankov»
+en.RunGame=Launch «Mir Tankov»
 
 ru.FoundVersion=Найден клиент «Мира Танков» версии %s.
 en.FoundVersion=«Mir Tankov» client version %s detected.
 ru.MajVerMismatch=Моды создавались для версии %s, и их работоспособность не%nгарантируется. Рекомендуем проверить наличие более свежей версии на нашем%nпортале.
-en.MajVerMismatch=Mods were designed to run on version %s, and there's no%nguarantee they will work. It is recommended to check for a newer version%non our website.
+en.MajVerMismatch=The mods were designed to run on version %s, and there's no%nguarantee they will work. It is recommended to check for a newer version%non our website.
 ru.MidVerMismatch=Моды создавались для версии %s, поэтому есть вероятность%nвозникновения проблем совместимости.
-en.MidVerMismatch=Mods were designed to run on version %s, so you might%nencounter some compatibility issues.
+en.MidVerMismatch=The mods were designed to run on version %s, so you might%nencounter some compatibility issues.
 ru.MinVerMismatch=Моды создавались для версии %s, но шанс возникновения проблем%nминимален.
-en.MinVerMismatch=Mods were designed to run on version %s, but you should%nbe fine.
+en.MinVerMismatch=The mods were designed to run on version %s, but you should%nbe fine.
 ru.VerMatch=Моды полностью совместимы с данной версией игры.
-en.VerMatch=Mods are fully compatible with your game client.
+en.VerMatch=The mods are fully compatible with your game client.
 ru.OldVer=Ваша игра устарела. Обновите клиент перед установкой модов.
 en.OldVer=Your game client is outdated. Please update it before proceeding.
 ru.ClientNotFound=Клиент игры не найден. Пожалуйста, проверьте указанный путь.
@@ -144,6 +144,8 @@ ru.NewVerAvailable=Доступна новая версия установщик
 en.NewVerAvailable=A new version is available. Do you want to download it?
 ru.DevBuild=Вы используете раннюю сборку! Пожалуйста, дождитесь официального релиза перед установкой, чтобы избежать проблем.%n%nТехподдержка НЕ будет предоставлена, если вы установите моды сейчас.
 en.DevBuild=You're using an early version of the installer! Please wait until the final release to avoid issues with your modded game.%n%nWe will NOT provide any kind of tech support if you install now.
+ru.DisabledMods=На данный момент следующие моды несовместимы с последней версией игры:%n%n%s%nНажмите "ОК", чтобы продолжить установку без них (крайне рекомендуется).%n%nНажмите "Отмена", если вы готовы рискнуть и попытаться запустить игру со сломанными модами.
+en.DisabledMods=These mods are incompatible with the latest version of the game at the time:%n%n%s%nClick "OK" to continue without them (highly recommended).%n%nClick "Cancel" if you're willing to take the risk and try to use these broken mods anyway.
 
 [Code]
 const
@@ -166,6 +168,7 @@ var
   LatestLink: String;
   ModsStatus: Integer;
   IsDevBuild: Boolean;
+  IsConnected: Boolean;
 
 function StrSplit(Text: String; Separator: String): TArrayOfString;
 begin
@@ -413,6 +416,7 @@ var
   RequestText: String;
 begin
   Result := True;
+  IsConnected := False;
   try
     RequestText := CheckLatestVersion();
     LatestMajorVersion := StrToInt(LoadValueFromXMLString(RequestText, '//root/sd_models/major'));
@@ -437,25 +441,53 @@ begin
       IsDevBuild := true;
       SuppressibleMsgBox(CustomMessage('DevBuild'), mbError, MB_OK, IDOK);
     end;
+    IsConnected := True;
   except
+    IsConnected := False;
+  end;
+end;
+
+function GetDisabledModsIndexes: TStringList;
+var i: Integer;
+begin
+  Result := TStringList.Create();
+  for i := 0 to WizardForm.ComponentsList.Items.Count-1 do
+  begin
+    if ModsStatus mod 2 = 0 then
+    begin
+      Result.Add(IntToStr(i));
+    end;
+    ModsStatus := ModsStatus div 2;
+  end;
+end;
+
+procedure DisableMods(Indexes: TStringList);
+var i: Integer;
+begin
+  for i := 0 to Indexes.Count-1 do
+  begin
+    WizardForm.ComponentsList.Checked[StrToInt(Indexes[i])] := False;
+    WizardForm.ComponentsList.ItemEnabled[StrToInt(Indexes[i])] := False;
   end;
 end;
 
 procedure InitializeWizard;
+var DisabledModsIndexes: TStringList;
+var DisabledMods: String;
 var i: Integer;
 begin
   WizardForm.DirEdit.OnChange := @DirEditChange;
-  
-  if ModsStatus >= 0 then
+  if IsConnected and (LatestBuild = CurBuild) then
   begin
-    for i := 0 to WizardForm.ComponentsList.Items.Count-1 do
+    DisabledModsIndexes := GetDisabledModsIndexes();
+    if DisabledModsIndexes.Count > 0 then
     begin
-      if ModsStatus mod 2 = 0 then
-      begin
-        WizardForm.ComponentsList.Checked[i] := False;
-        WizardForm.ComponentsList.ItemEnabled[i] := False;
+      DisabledMods := '';
+      for i := 0 to DisabledModsIndexes.Count-1 do
+        DisabledMods := '- '+WizardForm.ComponentsList.ItemCaption[StrToInt(DisabledModsIndexes[i])]+''#13#10'';
+      case MsgBox(Format(CustomMessage('DisabledMods'), [DisabledMods]), mbError, MB_OKCANCEL) of 
+        IDOK: DisableMods(DisabledModsIndexes);
       end;
-      ModsStatus := ModsStatus div 2;
     end;
   end;
   
